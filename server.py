@@ -62,6 +62,7 @@ def fileTransferProtocol(port):
                 #no need to accept with udp we just receive
                 data, addr = serverSocket.recvfrom(1024)
                 data_new = data.decode()
+
                 # Split the HTTP request sent into words
                 group_requests = data_new.split(" ")
                 print(group_requests)
