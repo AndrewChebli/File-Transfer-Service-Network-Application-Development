@@ -28,7 +28,9 @@ def fileTransferProtocol(port):
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             serverSocket.bind(('127.0.0.1', port))
             serverSocket.listen(1)
+            #accept first connection
             connectionSocket,addr = serverSocket.accept()
+            #variable to know if there is a client currently connected
             connected = True
             print("TCP server launched!")
             while True:
@@ -60,7 +62,7 @@ def fileTransferProtocol(port):
                 #no need to accept with udp we just receive
                 data, addr = serverSocket.recvfrom(1024)
                 data_new = data.decode()
-                # Split the HTTP request sent into lines
+                # Split the HTTP request sent into words
                 group_requests = data_new.split(" ")
                 print(group_requests)
 
