@@ -21,29 +21,55 @@ def bye():
 
 
 def fileTransferProtocol(port):
-    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.bind(('localhost', port))
-    serverSocket.listen(1)
     while True:
-        # Create socket for the connection
-        connectionSocket, addr = serverSocket.accept()
-        print(f'ip address: {addr}')
+        connection = input("Choose type of communication: TCP or UDP? ")
 
-        while True:
-            # Receive request from client and decode it
-            message = connectionSocket.recv(1024).decode()
-            
-            if (message == 'bye'):
-                # If no data received, client may have closed the connection
-                bye()
-                break
-            
-            # Split the HTTP request sent into lines
-            group_requests = message.split("\n")
-            print(group_requests)
+        if connection == 'TCP':
+            serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            serverSocket.bind(('127.0.0.1', port))
+            serverSocket.listen(1)
+            #accept first connection
+            connectionSocket,addr = serverSocket.accept()
+            #variable to know if there is a client currently connected
+            connected = True
+            print("TCP server launched!")
+            while True:
+                
+                if not(connected):
+                    # Create socket for the connection
+                    connectionSocket, addr = serverSocket.accept()
+                    print(f'accepting connection from ip address: {addr}')
+                    connected = True
 
-        connectionSocket.close() 
+                message = connectionSocket.recv(1024).decode()
 
+                if message == 'bye' :
+                    # If client send bye, then server can close the connection
+                    bye()
+                    connectionSocket.close()
+                    connected = False
+                    continue 
+
+                # Split the HTTP request sent into words
+                group_requests = message.split(" ")
+                print(group_requests)
+                
+        elif connection == 'UDP':     
+            serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            serverSocket.bind(('127.0.0.1', port))
+            print("UDP server launched!")
+            while True:
+                #no need to accept with udp we just receive
+                data, addr = serverSocket.recvfrom(1024)
+                data_new = data.decode()
+
+                # Split the HTTP request sent into words
+                group_requests = data_new.split(" ")
+                print(group_requests)
+
+        else:
+            continue    
+    
 
 if __name__ == '__main__':
     fileTransferProtocol(500)
