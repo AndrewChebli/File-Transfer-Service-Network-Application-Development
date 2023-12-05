@@ -3,6 +3,9 @@ import os
 
 rescode_put =0 
 
+server_folder = os.path.dirname(os.path.realpath(__file__))
+
+print(f"Server folder: {server_folder}")
 def decode_first_byte(first_byte):  # Add rescode to response message
     new = int.from_bytes(first_byte, byteorder='big') 
     rescode = new >>5
@@ -10,17 +13,24 @@ def decode_first_byte(first_byte):  # Add rescode to response message
     return rescode, filename_length
 
 def receive_file(connection_socket, filename_length):
-    # Read the filename
+
    encoded_filename = connection_socket.recv(filename_length)
-        # Decode the filename from bytes to a string
    filename = encoded_filename.decode()
-    # Read the file data
-   file_data = connection_socket.recv(1024)
+   file_path = os.path.join(server_folder, filename)
+   print(f"Saving file to: {file_path}")
+   
+   
     
-   with open("filename", 'wb') as file:
-        while file_data:
-            file.write(file_data)
+   with open(file_path, 'wb') as file:
+         while True:
             file_data = connection_socket.recv(1024)
+            if "EOF".encode() in file_data:
+                # If EOF is found, write data up to EOF and then break
+                eof_index = file_data.index("EOF".encode())
+                file.write(file_data[:eof_index])  # Write data before EOF
+                break  # Stop reading after EOF
+            else:
+                file.write(file_data)
 
 def put_func(filename):
 

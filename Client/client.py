@@ -21,6 +21,8 @@ def put_func(filename, client_socket):
             client_socket.send(filename.encode(typefile)) 
             filedata = open(filename, 'rb').read()
             client_socket.send(filedata)
+            eof_signal = "EOF".encode()
+            client_socket.send(eof_signal)
 
 
 def command_byte(opcode, filename):
@@ -29,6 +31,8 @@ def command_byte(opcode, filename):
      return msb | filename_length
 
 def ftp_transfer_client(server_ip, server_port):
+        script_directory = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(script_directory)
         while True:
             connection = input("Choose type of communication: TCP or UDP? ")
             if connection =='TCP':     
@@ -56,7 +60,7 @@ def ftp_transfer_client(server_ip, server_port):
                 if(command[0].lower() == 'put'):
                     print('transferring file')
                     put_func(command[1], client_socket)
-                    break
+                    
                 elif(command[0].lower() == 'bye'):
                     print('client terminated session')
                     client_socket.close()
