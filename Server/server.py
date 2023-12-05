@@ -1,9 +1,16 @@
+from random import randint
 import socket
 import os
 
 rescode_put =0 
+rescode_get = 1
 
 server_folder = os.path.dirname(os.path.realpath(__file__))
+
+def response_byte(opcode, filename):
+     msb = opcode << 5 
+     filename_length = len(filename)
+     return msb | filename_length
 
 print(f"Server folder: {server_folder}")
 def decode_first_byte(first_byte):  # Add rescode to response message
@@ -32,12 +39,20 @@ def receive_file(connection_socket, filename_length):
             else:
                 file.write(file_data)
 
-def put_func(filename):
 
-    pass
+def send_file(connection_socket,decoded_filename):
+    file_path = os.path.join(server_folder,decoded_filename)
 
-def get_func(filename):
-    pass
+    with open(file_path,'rb') as file:
+        file_data = file.read(1024)
+        print(file_data)
+    connection_socket.send(file_data)
+    eof_signal = "EOF".encode()
+    connection_socket.send(eof_signal)
+
+
+
+
 
 def summary_func(filename):
     pass
@@ -76,19 +91,25 @@ def fileTransferProtocol(port):
 
                 first_byte = connectionSocket.recv(1)
                 if not first_byte:
-                     break
+                    connected = False 
+                    continue
                 rescode, filename_length = decode_first_byte(first_byte)
                 
                 print(f"Decoded rescode: {rescode}, filename_length: {filename_length}")
-                # if message == 'bye' :
-                #     # If client send bye, then server can close the connection
-                #     bye()
-                #     connectionSocket.close()
-                #     connected = False
-                #     continue
+                
                 if rescode == rescode_put :
                     receive_file(connectionSocket, filename_length)
                     print(f"File received successfully.")
+                elif rescode == rescode_get:
+                    encoded_filename = connectionSocket.recv(filename_length)
+                    decoded_filename = encoded_filename.decode()
+                    if os.path.exists(f"{server_folder}/{decoded_filename}"):
+                        response_msg = response_byte(rescode_get,decoded_filename)
+                        print(f"response_msg is {response_msg}")
+                        connectionSocket.send(bytes([response_msg]))
+                        connectionSocket.send(decoded_filename.encode("utf-8"))
+                        send_file(connectionSocket, decoded_filename)
+                        print("File sent successfully")
                 
                 # Split the HTTP request sent into words
                 #group_requests = message.split(" ")
@@ -112,4 +133,7 @@ def fileTransferProtocol(port):
     
 
 if __name__ == '__main__':
-    fileTransferProtocol(2005)
+    port = randint(2000,50000)
+    print(f"port for server is {port}")
+    fileTransferProtocol(port)
+    

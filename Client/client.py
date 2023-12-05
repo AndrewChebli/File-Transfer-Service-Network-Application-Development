@@ -7,6 +7,40 @@ change_opcode = 2
 summary_opcode = 3
 help_opcode = 4
 typefile = "utf-8"
+client_folder = os.path.dirname(os.path.realpath(__file__))
+
+
+def decode_first_byte(first_byte):  # Add rescode to response message
+    new = int.from_bytes(first_byte, byteorder='big') 
+    rescode = new >>5
+    filename_length = new & 0x1F
+    return rescode, filename_length
+
+def receive_file(connection_socket, filename_length):
+
+   encoded_filename = connection_socket.recv(filename_length)
+   print(encoded_filename)
+   filename = encoded_filename.decode()
+   file_path = os.path.join(client_folder, filename)
+   print(f"Saving file to: {file_path}")  
+   with open(file_path, 'wb') as file:
+         while True:
+            file_data = connection_socket.recv(1024)
+            if "EOF".encode() in file_data:
+                # If EOF is found, write data up to EOF and then break
+                eof_index = file_data.index("EOF".encode())
+                file.write(file_data[:eof_index])  # Write data before EOF
+                break  # Stop reading after EOF
+            else:
+                file.write(file_data)
+
+def get_func(filename, client_socket):
+        if len(filename)>31:
+            raise("filename length should be 31 or less")
+        
+        firstByte = command_byte(get_opcode, filename)
+        client_socket.send(bytes([firstByte]))
+        client_socket.send(filename.encode(typefile)) 
 
 def put_func(filename, client_socket):
             if not os.path.exists(filename):
@@ -60,11 +94,21 @@ def ftp_transfer_client(server_ip, server_port):
                 if(command[0].lower() == 'put'):
                     print('transferring file')
                     put_func(command[1], client_socket)
-                    
+                elif command[0].lower() == 'get':
+                    get_func(command[1].lower(),client_socket)
+                    print('waiting for server response')
+                    rescode, filename_length = decode_first_byte(client_socket.recv(1))
+                    print(f"answer is {rescode}, {filename_length}")
+                    if rescode == 1:
+                        print("get request was successful")
+                        receive_file(client_socket,filename_length)
+
                 elif(command[0].lower() == 'bye'):
                     print('client terminated session')
                     client_socket.close()
                     break
+                else:
+                     continue
                 
             elif connection == 'UDP':          
                 # Send command to the server
@@ -78,4 +122,6 @@ def ftp_transfer_client(server_ip, server_port):
     
 
 if __name__ == '__main__':
-    ftp_transfer_client('127.0.0.1',2005)
+    port = input("enter the port you want to connect to ? ")
+    port = int(port)
+    ftp_transfer_client('127.0.0.1',port)
