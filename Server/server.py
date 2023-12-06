@@ -12,7 +12,6 @@ def response_byte(opcode, filename):
      filename_length = len(filename)
      return msb | filename_length
 
-print(f"Server folder: {server_folder}")
 def decode_first_byte(first_byte):  # Add rescode to response message
     new = int.from_bytes(first_byte, byteorder='big') 
     rescode = new >>5
@@ -26,11 +25,13 @@ def receive_file(connection_socket, filename_length):
    file_path = os.path.join(server_folder, filename)
    print(f"Saving file to: {file_path}")
    
-   
-    
    with open(file_path, 'wb') as file:
          while True:
             file_data = connection_socket.recv(1024)
+            print(file_data)
+            if len(file_data) == 0:
+                # No more data to read, break out of the loop
+                break
             if "EOF".encode() in file_data:
                 # If EOF is found, write data up to EOF and then break
                 eof_index = file_data.index("EOF".encode())
@@ -44,15 +45,19 @@ def send_file(connection_socket,decoded_filename):
     file_path = os.path.join(server_folder,decoded_filename)
 
     with open(file_path,'rb') as file:
-        file_data = file.read(1024)
-        print(file_data)
-    connection_socket.send(file_data)
-    eof_signal = "EOF".encode()
-    connection_socket.send(eof_signal)
+        filedata = file.read(1024)
+        connection_socket.send(filedata)
 
-
-
-
+        # Continue sending one byte at a time until the end of the file
+        while filedata:
+            filedata = file.read(1024)
+            if not filedata:
+                break  # Exit the loop when no more data to send
+            connection_socket.send(filedata)
+            print(filedata)
+        # Send an "EOF" signal to indicate the end of the file
+        eof_signal = "EOF".encode()
+        connection_socket.send(eof_signal)
 
 def summary_func(filename):
     pass
@@ -129,10 +134,11 @@ def fileTransferProtocol(port):
                 print(group_requests)
 
         else:
-            continue    
+            continue
     
 
 if __name__ == '__main__':
+    print(server_folder)
     port = randint(2000,50000)
     print(f"port for server is {port}")
     fileTransferProtocol(port)

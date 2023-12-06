@@ -52,11 +52,25 @@ def put_func(filename, client_socket):
             
             firstByte = command_byte(put_opcode, filename) 
             client_socket.send(bytes([firstByte]))
-            client_socket.send(filename.encode(typefile)) 
-            filedata = open(filename, 'rb').read()
-            client_socket.send(filedata)
-            eof_signal = "EOF".encode()
-            client_socket.send(eof_signal)
+            client_socket.send(filename.encode(typefile))
+            # filedata = open(filename, 'rb').read()
+            # client_socket.send(filedata)
+
+            with open(filename, 'rb') as file:
+                filedata = file.read(1024)
+                client_socket.send(filedata)
+
+                # Continue sending one byte at a time until the end of the file
+                while filedata:
+                    filedata = file.read(1024)
+                    if not filedata:
+                        break  # Exit the loop when no more data to send
+                    client_socket.send(filedata)
+                    print(filedata)
+
+                # Send an "EOF" signal to indicate the end of the file
+                eof_signal = "EOF".encode()
+                client_socket.send(eof_signal)
 
 
 def command_byte(opcode, filename):
