@@ -6,14 +6,12 @@ rescode_put =0
 rescode_get = 1
 rescode_help = 4
 good_request_help = 6
-
 server_folder = os.path.dirname(os.path.realpath(__file__))
 
 def response_byte(opcode, filename):
      msb = opcode << 5 
      filename_length = len(filename)
      return msb | filename_length
-
 
 def decode_first_byte(first_byte):  # Add rescode to response message
     new = int.from_bytes(first_byte, byteorder='big') 
@@ -42,7 +40,6 @@ def receive_file(connection_socket, filename_length):
                 break  # Stop reading after EOF
             else:
                 file.write(file_data)
-
 
 def send_file(connection_socket,decoded_filename):
     file_path = os.path.join(server_folder,decoded_filename)
@@ -88,13 +85,8 @@ def help_func(connection_socket,filename):
             eof_signal = "EOF".encode()
             connection_socket.send(eof_signal)
 
-
-
-
-
 def bye():
     print("Client closed the connection.")
-
 
 def fileTransferProtocol(port):
     while True:
@@ -109,9 +101,7 @@ def fileTransferProtocol(port):
             #variable to know if there is a client currently connected
             connected = True
             print("TCP server launched!")
-            
             while True:
-                
                 if not(connected):
                     # Create socket for the connection
                     connectionSocket, addr = serverSocket.accept()
@@ -141,9 +131,7 @@ def fileTransferProtocol(port):
                         print("File sent successfully")
                 elif rescode == rescode_help:
 
-                    help_func(connectionSocket,"help.txt")
-
-                            
+                    help_func(connectionSocket,"help.txt")                 
         elif connection == 'UDP':     
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             serverSocket.bind(('127.0.0.1', port))
@@ -160,7 +148,6 @@ def fileTransferProtocol(port):
         else:
             continue
     
-
 if __name__ == '__main__':
     print(server_folder)
     port = randint(2000,50000)

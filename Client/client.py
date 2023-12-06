@@ -17,9 +17,6 @@ def help_func(connection_socket):
     if rescode == 6:
         print(f"commands are: {(connection_socket.recv(1024)).decode()}")
 
-    
-
-
 def decode_first_byte(first_byte):  # Add rescode to response message
     new = int.from_bytes(first_byte, byteorder='big') 
     rescode = new >>5
@@ -80,12 +77,6 @@ def put_func(filename, client_socket):
                 eof_signal = "EOF".encode()
                 client_socket.send(eof_signal)
 
-
-# def command_byte(opcode, filename):
-#      msb = opcode << 5 
-#      filename_length = len(filename)
-#      return msb | filename_length
-
 def command_byte(opcode, filename=None):
     msb = opcode << 5
     if filename is not None:
@@ -111,8 +102,6 @@ def ftp_transfer_client(server_ip, server_port):
                 break
             else:
                 continue
-
-        # print(f"Connected to FTP Server at {server_ip}:{server_port}")
 
         while True:
             #ask client for input
@@ -144,13 +133,6 @@ def ftp_transfer_client(server_ip, server_port):
             elif connection == 'UDP':          
                 # Send command to the server
                 client_socket.sendto(' '.join(command).encode(),(server_ip,server_port))
-            
-    
-       
-                
-
-               
-    
 
 if __name__ == '__main__':
     port = input("enter the port you want to connect to ? ")
