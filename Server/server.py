@@ -4,6 +4,8 @@ import os
 
 rescode_put =0 
 rescode_get = 1
+rescode_help = 4
+good_request_help = 6
 
 server_folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -11,6 +13,7 @@ def response_byte(opcode, filename):
      msb = opcode << 5 
      filename_length = len(filename)
      return msb | filename_length
+
 
 def decode_first_byte(first_byte):  # Add rescode to response message
     new = int.from_bytes(first_byte, byteorder='big') 
@@ -65,8 +68,29 @@ def summary_func(filename):
 def change_func(oldFileName, newFileName):
     pass
 
-def help_func():
-    pass
+def help_func(connection_socket,filename):
+    msb = good_request_help << 5 
+    fileSize = os.path.getsize(f"{server_folder}/{filename}")
+    response_msg = msb | fileSize
+    connection_socket.send(bytes([response_msg]))
+    print(response_msg)
+    
+    with open(filename,"rb") as file:
+        filedata = file.read(1024)
+        connection_socket.send(filedata)
+        while filedata:
+            filedata = file.read(1024)
+            if not filedata:
+                break  # Exit the loop when no more data to send
+            connection_socket.send(filedata)
+            print(filedata)
+            # Send an "EOF" signal to indicate the end of the file
+            eof_signal = "EOF".encode()
+            connection_socket.send(eof_signal)
+
+
+
+
 
 def bye():
     print("Client closed the connection.")
@@ -115,6 +139,10 @@ def fileTransferProtocol(port):
                         connectionSocket.send(decoded_filename.encode("utf-8"))
                         send_file(connectionSocket, decoded_filename)
                         print("File sent successfully")
+                elif rescode == rescode_help:
+
+                    help_func(connectionSocket,"help.txt")
+
                             
         elif connection == 'UDP':     
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

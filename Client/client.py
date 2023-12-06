@@ -9,6 +9,16 @@ help_opcode = 4
 typefile = "utf-8"
 client_folder = os.path.dirname(os.path.realpath(__file__))
 
+def help_func(connection_socket):
+    firstByte = command_byte(help_opcode)
+    connection_socket.send(bytes([firstByte]))
+    rescode, filename_length = decode_first_byte(connection_socket.recv(1))
+    print(f"rescode {rescode}")
+    if rescode == 6:
+        print((connection_socket.recv(1024)).decode())
+
+    
+
 
 def decode_first_byte(first_byte):  # Add rescode to response message
     new = int.from_bytes(first_byte, byteorder='big') 
@@ -40,7 +50,7 @@ def get_func(filename, client_socket):
         
         firstByte = command_byte(get_opcode, filename)
         client_socket.send(bytes([firstByte]))
-        client_socket.send(filename.encode(typefile)) 
+        client_socket.send(filename.encode(typefile))
 
 def put_func(filename, client_socket):
             if not os.path.exists(filename):
@@ -53,8 +63,6 @@ def put_func(filename, client_socket):
             firstByte = command_byte(put_opcode, filename) 
             client_socket.send(bytes([firstByte]))
             client_socket.send(filename.encode(typefile))
-            # filedata = open(filename, 'rb').read()
-            # client_socket.send(filedata)
 
             with open(filename, 'rb') as file:
                 filedata = file.read(1024)
@@ -73,10 +81,18 @@ def put_func(filename, client_socket):
                 client_socket.send(eof_signal)
 
 
-def command_byte(opcode, filename):
-     msb = opcode << 5 
-     filename_length = len(filename)
-     return msb | filename_length
+# def command_byte(opcode, filename):
+#      msb = opcode << 5 
+#      filename_length = len(filename)
+#      return msb | filename_length
+
+def command_byte(opcode, filename=None):
+    msb = opcode << 5
+    if filename is not None:
+        filename_length = len(filename)
+    else:
+        filename_length = 0
+    return msb | filename_length
 
 def ftp_transfer_client(server_ip, server_port):
         script_directory = os.path.dirname(os.path.realpath(__file__))
@@ -116,11 +132,12 @@ def ftp_transfer_client(server_ip, server_port):
                     if rescode == 1:
                         print("get request was successful")
                         receive_file(client_socket,filename_length)
-
                 elif(command[0].lower() == 'bye'):
                     print('client terminated session')
                     client_socket.close()
                     break
+                elif(command[0].lower() == 'help'):
+                     help_func(client_socket)
                 else:
                      continue
                 
