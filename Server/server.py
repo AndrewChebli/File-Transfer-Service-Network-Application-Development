@@ -115,11 +115,7 @@ def fileTransferProtocol(port):
                         connectionSocket.send(decoded_filename.encode("utf-8"))
                         send_file(connectionSocket, decoded_filename)
                         print("File sent successfully")
-                
-                # Split the HTTP request sent into words
-                #group_requests = message.split(" ")
-                #print(group_requests)
-                
+                            
         elif connection == 'UDP':     
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             serverSocket.bind(('127.0.0.1', port))
