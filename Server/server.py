@@ -3,6 +3,7 @@ import socket
 import os
 
 rescode_put =0 
+rescode_change = 0
 rescode_get = 1
 rescode_help = 4
 good_request_help = 6
@@ -62,8 +63,21 @@ def send_file(connection_socket,decoded_filename):
 def summary_func(filename):
     pass
 
-def change_func(oldFileName, newFileName):
-    pass
+def change_func(connection_socket,oldFileName_length):
+    #for old name
+    encoded_oldFileName = connection_socket.recv(oldFileName_length)
+    decoded_oldFileName = encoded_oldFileName.decode()
+    #for new name
+    newFileByte = connection_socket.recv(1)
+    new_fileName_length = int.from_bytes(newFileByte, byteorder='big') 
+    newFileName = (connection_socket.recv(new_fileName_length)).decode()
+    #change name
+    os.rename(decoded_oldFileName, newFileName)
+    print(f"Change request was a success! ")
+    msb = 0 << 5 
+    response_msg = msb | 0
+    connection_socket.send(bytes([response_msg]))
+    
 
 def help_func(connection_socket,filename):
     msb = good_request_help << 5 
@@ -130,8 +144,9 @@ def fileTransferProtocol(port):
                         send_file(connectionSocket, decoded_filename)
                         print("File sent successfully")
                 elif rescode == rescode_help:
-
                     help_func(connectionSocket,"help.txt")                 
+                elif rescode == 2:
+                    change_func(connectionSocket,filename_length)
         elif connection == 'UDP':     
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             serverSocket.bind(('127.0.0.1', port))

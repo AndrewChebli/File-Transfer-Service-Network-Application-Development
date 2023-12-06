@@ -77,6 +77,26 @@ def put_func(filename, client_socket):
                 eof_signal = "EOF".encode()
                 client_socket.send(eof_signal)
 
+
+def change_func(connectionSocket, oldFileName, newFileName):
+    firstByte = command_byte(change_opcode, oldFileName)
+    connectionSocket.send(bytes([firstByte]))
+    connectionSocket.send(oldFileName.encode(typefile))
+    #to send length of the newFileName
+    newFileName_length = bytes([len(newFileName)])
+    connectionSocket.send(newFileName_length)
+    #send encoded newFileName
+    connectionSocket.send(newFileName.encode(typefile))
+    #receive response from server
+    rescode, filename_length = decode_first_byte(connectionSocket.recv(1))
+    if rescode == 0:
+        print(f"{oldFileName} has been changed into {newFileName}. ")
+
+
+
+
+
+
 def command_byte(opcode, filename=None):
     msb = opcode << 5
     if filename is not None:
@@ -127,6 +147,8 @@ def ftp_transfer_client(server_ip, server_port):
                     break
                 elif(command[0].lower() == 'help'):
                      help_func(client_socket)
+                elif(command[0].lower() == 'change'):
+                     change_func(client_socket,command[1], command[2])
                 else:
                      continue
                 
