@@ -15,7 +15,7 @@ def help_func(connection_socket):
     rescode, filename_length = decode_first_byte(connection_socket.recv(1))
     print(f"rescode {rescode}")
     if rescode == 6:
-        print((connection_socket.recv(1024)).decode())
+        print(f"commands are: {(connection_socket.recv(1024)).decode()}")
 
     
 
