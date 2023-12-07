@@ -78,7 +78,17 @@ def change_func(connection_socket,oldFileName_length):
     msb = 0 << 5 
     response_msg = msb | 0
     connection_socket.send(bytes([response_msg]))
-    
+
+def calculate_summary(filename):
+    try:
+        with open(filename, 'r') as file:
+            numbers = [float(line.strip()) for line in file if line.strip()]
+        return max(numbers), min(numbers), sum(numbers) / len(numbers)
+    except Exception as e:
+        print(f"Error calculating summary: {e}")
+        return None, None, None
+
+
 
 def help_func(connection_socket,filename):
     msb = good_request_help << 5 
