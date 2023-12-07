@@ -78,7 +78,7 @@ def change_func(connection_socket,oldFileName_length):
     msb = 0 << 5 
     response_msg = msb | 0
     connection_socket.send(bytes([response_msg]))
-
+    
 def calculate_summary(filename):
     try:
         with open(filename, 'r') as file:
@@ -88,7 +88,19 @@ def calculate_summary(filename):
         print(f"Error calculating summary: {e}")
         return None, None, None
 
-
+def summary_func(connection_socket, filename):
+    max_val, min_val, avg_val = calculate_summary(filename)
+    if max_val is not None:
+        summary_data = f"Max: {max_val}\nMin: {min_val}\nAverage: {avg_val}\n"
+        summary_filename = "summary_" + os.path.basename(filename)
+        with open(summary_filename, 'w') as summary_file:
+            summary_file.write(summary_data)        
+        res_message = response_byte(summary_opcode, summary_filename)
+        connection_socket.send(bytes([res_message]))
+        send_file(connection_socket, summary_filename)
+        os.remove(summary_filename)  # Optionally remove summary file after sending
+    else:
+        connection_socket.send("Error in processing file.".encode())
 
 def help_func(connection_socket,filename):
     msb = good_request_help << 5 
