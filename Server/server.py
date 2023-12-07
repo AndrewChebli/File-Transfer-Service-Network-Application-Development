@@ -7,6 +7,7 @@ rescode_change = 0
 rescode_get = 1
 rescode_help = 4
 good_request_help = 6
+summary_opcode =3
 server_folder = os.path.dirname(os.path.realpath(__file__))
 
 def response_byte(opcode, filename):
@@ -98,6 +99,7 @@ def help_func(connection_socket,filename):
             # Send an "EOF" signal to indicate the end of the file
             eof_signal = "EOF".encode()
             connection_socket.send(eof_signal)
+
 
 def bye():
     print("Client closed the connection.")

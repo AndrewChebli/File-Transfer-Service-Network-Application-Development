@@ -93,7 +93,22 @@ def change_func(connectionSocket, oldFileName, newFileName):
         print(f"{oldFileName} has been changed into {newFileName}. ")
 
 
-
+def summary(filename,client_socket):
+     firstByte = command_byte(summary_opcode, filename)
+     client_socket.send(bytes([firstByte]))
+     client_socket.send(filename.encode(typefile))
+     rescode, filename_length = decode_first_byte(client_socket.recv(1))
+     if rescode == 0:
+        print(f"Summary request for {filename} was successful.")
+        # Assuming the server sends back the name of the summary file
+        summary_filename = client_socket.recv(filename_length).decode()
+        print(f"Receiving summary file: {summary_filename}")
+        receive_file(client_socket, filename_length)
+     else:
+        print("Error in summary request.")
+     
+     pass
+     
 
 
 
@@ -149,6 +164,9 @@ def ftp_transfer_client(server_ip, server_port):
                      help_func(client_socket)
                 elif(command[0].lower() == 'change'):
                      change_func(client_socket,command[1], command[2])
+                elif command[0].lower() == 'summary':
+                     summary(command[1].lower(), client_socket)
+
                 else:
                      continue
                 
