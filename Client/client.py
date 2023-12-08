@@ -26,11 +26,9 @@ def decode_first_byte(first_byte):  # Add rescode to response message
 def receive_file(connection_socket, filename_length):
 
    encoded_filename = connection_socket.recv(filename_length)
-   print(encoded_filename)
    filename = encoded_filename.decode()
    file_path = os.path.join(client_folder, filename)
    print(f"Saving file to: {file_path}")  
-   print(f"this is the!!!!! File name{filename}")
    with open(file_path, 'wb') as file:
          while True:
             file_data = connection_socket.recv(1024)
@@ -77,6 +75,12 @@ def put_func(filename, client_socket):
                 # Send an "EOF" signal to indicate the end of the file
                 eof_signal = "EOF".encode()
                 client_socket.send(eof_signal)
+        
+            rescode, filename_length = decode_first_byte(client_socket.recv(1))
+            if(rescode == 0):
+                print(f" File was downloaded succesfully" )
+            else:
+                print(f"Error downloading the file")    
 
 
 def change_func(connectionSocket, oldFileName, newFileName):
@@ -102,7 +106,7 @@ def summary(filename,client_socket):
      print('waiting for server response')
 
      rescode, filename_length = decode_first_byte(client_socket.recv(1))
-     print(f"answer is {rescode}, {filename_length}")
+     
      if rescode == 2:
         print(f"Summary request for {filename} was successful.")
         # Assuming the server sends back the name of the summary file

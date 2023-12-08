@@ -3,14 +3,14 @@ import socket
 import os
 
 rescode_summary = 2
-
-rescode_put =0 
 rescode_change = 0
 rescode_get = 1
 rescode_help = 4
+rescode_put =0 
 
 good_request_help = 6
 summary_opcode =3
+put_opcode =0
 server_folder = os.path.dirname(os.path.realpath(__file__))
 
 def response_byte(opcode, filename):
@@ -45,6 +45,9 @@ def receive_file(connection_socket, filename_length):
                 break  # Stop reading after EOF
             else:
                 file.write(file_data)
+   msb = rescode_put << 5 
+   response_msg = msb | 0
+   connection_socket.send(bytes([response_msg]))
 
 def send_file(connection_socket,decoded_filename):
     file_path = os.path.join(server_folder,decoded_filename)
@@ -100,11 +103,8 @@ def summary_func(connection_socket, filename):
             summary_file.write(summary_data)       
         basename = os.path.basename(summary_filename) 
         res_message = response_byte(rescode_summary, basename)
-        print(f"rescode summary is {rescode_summary}")
-        print(f"filename ln is {basename}")
-        
+
         connection_socket.send(bytes([res_message]))
-        print(f"Summary file name issss {basename}")
         connection_socket.send(basename.encode())
         send_file(connection_socket, basename)
         os.remove(summary_filename)
@@ -163,7 +163,7 @@ def fileTransferProtocol(port):
                 
                 print(f"Decoded rescode: {rescode}, filename_length: {filename_length}")
                 
-                if rescode == rescode_put :
+                if rescode == put_opcode :
                     receive_file(connectionSocket, filename_length)
                     print(f"File received successfully.")
                 elif rescode == rescode_get:
