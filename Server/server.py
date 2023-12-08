@@ -2,10 +2,13 @@ from random import randint
 import socket
 import os
 
+rescode_summary = 2
+
 rescode_put =0 
 rescode_change = 0
 rescode_get = 1
 rescode_help = 4
+
 good_request_help = 6
 summary_opcode =3
 server_folder = os.path.dirname(os.path.realpath(__file__))
@@ -61,9 +64,6 @@ def send_file(connection_socket,decoded_filename):
         eof_signal = "EOF".encode()
         connection_socket.send(eof_signal)
 
-def summary_func(filename):
-    pass
-
 def change_func(connection_socket,oldFileName_length):
     #for old name
     encoded_oldFileName = connection_socket.recv(oldFileName_length)
@@ -80,8 +80,11 @@ def change_func(connection_socket,oldFileName_length):
     connection_socket.send(bytes([response_msg]))
     
 def calculate_summary(filename):
+    print(f"Received filename for summary: {filename}")
+    file_path = os.path.join(server_folder, filename)
+    
     try:
-        with open(filename, 'r') as file:
+        with open(file_path, 'r') as file:
             numbers = [float(line.strip()) for line in file if line.strip()]
         return max(numbers), min(numbers), sum(numbers) / len(numbers)
     except Exception as e:
@@ -92,13 +95,19 @@ def summary_func(connection_socket, filename):
     max_val, min_val, avg_val = calculate_summary(filename)
     if max_val is not None:
         summary_data = f"Max: {max_val}\nMin: {min_val}\nAverage: {avg_val}\n"
-        summary_filename = "summary_" + os.path.basename(filename)
+        summary_filename = os.path.join(server_folder, "summary_" + os.path.basename(filename))
         with open(summary_filename, 'w') as summary_file:
-            summary_file.write(summary_data)        
-        res_message = response_byte(summary_opcode, summary_filename)
+            summary_file.write(summary_data)       
+        basename = os.path.basename(summary_filename) 
+        res_message = response_byte(rescode_summary, basename)
+        print(f"rescode summary is {rescode_summary}")
+        print(f"filename ln is {basename}")
+        
         connection_socket.send(bytes([res_message]))
-        send_file(connection_socket, summary_filename)
-        os.remove(summary_filename)  # Optionally remove summary file after sending
+        print(f"Summary file name issss {basename}")
+        connection_socket.send(basename.encode())
+        send_file(connection_socket, basename)
+        os.remove(summary_filename)
     else:
         connection_socket.send("Error in processing file.".encode())
 
@@ -171,6 +180,11 @@ def fileTransferProtocol(port):
                     help_func(connectionSocket,"help.txt")                 
                 elif rescode == 2:
                     change_func(connectionSocket,filename_length)
+                elif rescode == summary_opcode:
+                    encoded_filename = connectionSocket.recv(filename_length)
+                    decoded_filename = encoded_filename.decode()
+
+                    summary_func(connectionSocket, decoded_filename)
         elif connection == 'UDP':     
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             serverSocket.bind(('127.0.0.1', port))

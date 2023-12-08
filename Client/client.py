@@ -30,6 +30,7 @@ def receive_file(connection_socket, filename_length):
    filename = encoded_filename.decode()
    file_path = os.path.join(client_folder, filename)
    print(f"Saving file to: {file_path}")  
+   print(f"this is the!!!!! File name{filename}")
    with open(file_path, 'wb') as file:
          while True:
             file_data = connection_socket.recv(1024)
@@ -97,17 +98,20 @@ def summary(filename,client_socket):
      firstByte = command_byte(summary_opcode, filename)
      client_socket.send(bytes([firstByte]))
      client_socket.send(filename.encode(typefile))
+
+     print('waiting for server response')
+
      rescode, filename_length = decode_first_byte(client_socket.recv(1))
-     if rescode == 0:
+     print(f"answer is {rescode}, {filename_length}")
+     if rescode == 2:
         print(f"Summary request for {filename} was successful.")
         # Assuming the server sends back the name of the summary file
-        summary_filename = client_socket.recv(filename_length).decode()
-        print(f"Receiving summary file: {summary_filename}")
+        
         receive_file(client_socket, filename_length)
      else:
         print("Error in summary request.")
      
-     pass
+     
      
 
 
