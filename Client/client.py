@@ -96,6 +96,8 @@ def change_func(connectionSocket, oldFileName, newFileName):
     rescode, filename_length = decode_first_byte(connectionSocket.recv(1))
     if rescode == 0:
         print(f"{oldFileName} has been changed into {newFileName}. ")
+    elif rescode == 3:
+        print(f"File '{oldFileName}' not found.")    
 
 
 def summary(filename,client_socket):
