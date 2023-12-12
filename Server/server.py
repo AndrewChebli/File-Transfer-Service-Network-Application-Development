@@ -71,10 +71,20 @@ def change_func(connection_socket,oldFileName_length):
     #for old name
     encoded_oldFileName = connection_socket.recv(oldFileName_length)
     decoded_oldFileName = encoded_oldFileName.decode()
+
     #for new name
     newFileByte = connection_socket.recv(1)
     new_fileName_length = int.from_bytes(newFileByte, byteorder='big') 
     newFileName = (connection_socket.recv(new_fileName_length)).decode()
+
+    # check if file exists
+    if not os.path.isfile(os.path.join(server_folder, decoded_oldFileName)):
+        print(f"File '{decoded_oldFileName}' not found.")
+        msb = 3 << 5 
+        response_msg = msb | 0
+        connection_socket.send(bytes([response_msg]))    
+        return
+
     #change name
     os.rename(decoded_oldFileName, newFileName)
     print(f"Change request was a success! ")
