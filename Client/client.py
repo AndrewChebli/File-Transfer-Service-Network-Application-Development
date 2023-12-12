@@ -182,7 +182,7 @@ def ftp_transfer_client(server_ip, server_port):
                      summary(command[1].lower(), client_socket)
 
                 else:
-                     continue
+                    continue
                 
             elif connection == 'UDP':          
                 # Send command to the server
