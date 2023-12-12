@@ -26,7 +26,6 @@ def decode_first_byte(first_byte):  # Add rescode to response message
 def receive_file(connection_socket, filename_length):
 
    encoded_filename = connection_socket.recv(filename_length)
-   print(encoded_filename)
    filename = encoded_filename.decode()
    file_path = os.path.join(client_folder, filename)
    print(f"Saving file to: {file_path}")  
@@ -76,6 +75,12 @@ def put_func(filename, client_socket):
                 # Send an "EOF" signal to indicate the end of the file
                 eof_signal = "EOF".encode()
                 client_socket.send(eof_signal)
+        
+            rescode, filename_length = decode_first_byte(client_socket.recv(1))
+            if(rescode == 0):
+                print(f" File was downloaded succesfully" )
+            else:
+                print(f"Error downloading the file")    
 
 
 def change_func(connectionSocket, oldFileName, newFileName):
@@ -93,7 +98,25 @@ def change_func(connectionSocket, oldFileName, newFileName):
         print(f"{oldFileName} has been changed into {newFileName}. ")
 
 
+def summary(filename,client_socket):
+     firstByte = command_byte(summary_opcode, filename)
+     client_socket.send(bytes([firstByte]))
+     client_socket.send(filename.encode(typefile))
 
+     print('waiting for server response')
+
+     rescode, filename_length = decode_first_byte(client_socket.recv(1))
+     
+     if rescode == 2:
+        print(f"Summary request for {filename} was successful.")
+        # Assuming the server sends back the name of the summary file
+        
+        receive_file(client_socket, filename_length)
+     else:
+        print("Error in summary request.")
+     
+     
+     
 
 
 
@@ -149,6 +172,9 @@ def ftp_transfer_client(server_ip, server_port):
                      help_func(client_socket)
                 elif(command[0].lower() == 'change'):
                      change_func(client_socket,command[1], command[2])
+                elif command[0].lower() == 'summary':
+                     summary(command[1].lower(), client_socket)
+
                 else:
                      continue
                 
