@@ -96,6 +96,10 @@ def change_func(connectionSocket, oldFileName, newFileName):
     rescode, filename_length = decode_first_byte(connectionSocket.recv(1))
     if rescode == 0:
         print(f"{oldFileName} has been changed into {newFileName}. ")
+    elif rescode == 3:
+        print(f"File '{oldFileName}' not found.")  
+    elif rescode == 5:
+        print(f"Unsuccessful change request for the file {oldFileName}.")      
 
 
 def summary(filename,client_socket):
@@ -164,6 +168,8 @@ def ftp_transfer_client(server_ip, server_port):
                     if rescode == 1:
                         print("get request was successful")
                         receive_file(client_socket,filename_length)
+                    elif rescode == 3:
+                        print(f"File '{command[1]}' not found.")
                 elif(command[0].lower() == 'bye'):
                     print('client terminated session')
                     client_socket.close()
@@ -176,7 +182,7 @@ def ftp_transfer_client(server_ip, server_port):
                      summary(command[1].lower(), client_socket)
 
                 else:
-                     continue
+                    continue
                 
             elif connection == 'UDP':          
                 # Send command to the server
