@@ -6,6 +6,7 @@ get_opcode = 1
 change_opcode = 2
 summary_opcode = 3
 help_opcode = 4
+error_opcode = 6
 typefile = "utf-8"
 client_folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -102,6 +103,8 @@ def change_func(connectionSocket, oldFileName, newFileName):
         print(f"Unsuccessful change request for the file {oldFileName}.")      
 
 
+
+
 def summary(filename,client_socket):
      firstByte = command_byte(summary_opcode, filename)
      client_socket.send(bytes([firstByte]))
@@ -180,6 +183,15 @@ def ftp_transfer_client(server_ip, server_port):
                      change_func(client_socket,command[1], command[2])
                 elif command[0].lower() == 'summary':
                      summary(command[1].lower(), client_socket)
+                elif command[0].lower() not in ['put', 'get', 'bye', 'help', 'change', 'summary']:
+                     firstByte = command_byte(error_opcode)
+                     client_socket.send(bytes([firstByte]))
+                     rescode, filename_length = decode_first_byte(client_socket.recv(1))
+                     if(rescode == 4): 
+                         print(f"command not found")
+                     
+                     
+
 
                 else:
                     continue

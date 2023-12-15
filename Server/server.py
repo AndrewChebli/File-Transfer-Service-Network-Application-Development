@@ -5,13 +5,19 @@ import os
 rescode_summary = 2
 rescode_change = 0
 rescode_get = 1
-rescode_help = 4
 rescode_put =0 
+res_file_not_found = 3
+res_error_unknown_request= 4
 
 good_request_help = 6
+get_opcode =1 
 summary_opcode =3
 put_opcode =0
+error_unknown_request= 6
+help_opcode = 4
+
 server_folder = os.path.dirname(os.path.realpath(__file__))
+
 
 def response_byte(opcode, filename):
      msb = opcode << 5 
@@ -79,7 +85,7 @@ def change_func(connection_socket,oldFileName_length):
     # check if file exists
     if not os.path.isfile(os.path.join(server_folder, decoded_oldFileName)):
         print(f"File '{decoded_oldFileName}' not found.")
-        msb = 3 << 5 
+        msb = res_file_not_found << 5 
         response_msg = msb | 0
         connection_socket.send(bytes([response_msg]))    
         return
@@ -93,7 +99,7 @@ def change_func(connection_socket,oldFileName_length):
         connection_socket.send(bytes([response_msg]))
         return 
     print(f"Change request was a success! ")
-    msb = 0 << 5 
+    msb = rescode_change << 5 
     response_msg = msb | 0
     connection_socket.send(bytes([response_msg]))
     
@@ -182,7 +188,7 @@ def fileTransferProtocol(port):
                 if rescode == put_opcode :
                     receive_file(connectionSocket, filename_length)
                     print(f"File received successfully.")
-                elif rescode == rescode_get:
+                elif rescode == get_opcode:
                     encoded_filename = connectionSocket.recv(filename_length)
                     decoded_filename = encoded_filename.decode()
                     if os.path.exists(f"{server_folder}/{decoded_filename}"):
@@ -194,10 +200,10 @@ def fileTransferProtocol(port):
                         print("File sent successfully")
                     else:
                         print(f"File '{decoded_filename}' not found.")
-                        msb = 3 << 5 
+                        msb = res_file_not_found << 5 
                         response_msg = msb | 0
                         connectionSocket.send(bytes([response_msg]))
-                elif rescode == rescode_help:
+                elif rescode == help_opcode:
                     help_func(connectionSocket,"help.txt")                 
                 elif rescode == 2:
                     change_func(connectionSocket,filename_length)
@@ -205,6 +211,14 @@ def fileTransferProtocol(port):
                     encoded_filename = connectionSocket.recv(filename_length)
                     decoded_filename = encoded_filename.decode()
                     summary_func(connectionSocket, decoded_filename)
+                elif rescode == error_unknown_request:
+                    msb = res_error_unknown_request << 5
+                    response_msg = msb | 0
+                    connectionSocket.send(bytes([response_msg]))
+
+
+
+
         elif connection == 'UDP':     
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             serverSocket.bind(('127.0.0.1', port))
@@ -226,4 +240,3 @@ if __name__ == '__main__':
     port = randint(2000,50000)
     print(f"port for server is {port}")
     fileTransferProtocol(port)
-    
