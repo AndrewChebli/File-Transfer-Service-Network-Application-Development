@@ -9,6 +9,7 @@ help_opcode = 4
 error_opcode = 6
 typefile = "utf-8"
 client_folder = os.path.dirname(os.path.realpath(__file__))
+tcp = True
 
 def help_func(connection_socket):
     firstByte = command_byte(help_opcode)
@@ -49,7 +50,9 @@ def get_func(filename, client_socket):
         client_socket.send(bytes([firstByte]))
         client_socket.send(filename.encode(typefile))
 
-def put_func(filename, client_socket):
+def put_func(filename, client_socket, server_ip,server_port):
+            
+        
             if not os.path.exists(filename):
                 raise FileNotFoundError(f"File '{filename}' not found.")
 
@@ -58,26 +61,49 @@ def put_func(filename, client_socket):
             
             
             firstByte = command_byte(put_opcode, filename) 
-            client_socket.send(bytes([firstByte]))
-            client_socket.send(filename.encode(typefile))
+            
+            if tcp :
+                client_socket.send(bytes([firstByte]))
+            else:
+                server_port = int(server_port)  # Ensure server_port is an integer
+                server_address = (server_ip, server_port)
+                client_socket.sendto(bytes([firstByte]), server_address)
+
+            if(tcp):   
+                client_socket.send(filename.encode(typefile))
+            else:
+                client_socket.sendto(filename.encode(typefile), server_address )
 
             with open(filename, 'rb') as file:
                 filedata = file.read(1024)
-                client_socket.send(filedata)
+                if(tcp):
+                    client_socket.send(filedata)
+                else:
+                    client_socket.sendto(filedata, server_address)
 
                 # Continue sending one byte at a time until the end of the file
                 while filedata:
                     filedata = file.read(1024)
                     if not filedata:
                         break  # Exit the loop when no more data to send
-                    client_socket.send(filedata)
+                    if(tcp):
+                        client_socket.send(filedata)
+                    else:
+                        client_socket.sendto(filedata, server_address)
                     print(filedata)
 
                 # Send an "EOF" signal to indicate the end of the file
                 eof_signal = "EOF".encode()
-                client_socket.send(eof_signal)
-        
-            rescode, filename_length = decode_first_byte(client_socket.recv(1))
+                if(tcp):
+                    client_socket.send(eof_signal)
+                else:
+                    client_socket.sendto(eof_signal, server_address)
+            
+            if tcp:
+              rescode, filename_length = decode_first_byte(client_socket.recv(1))
+            else:
+                data, _ = client_socket.recvfrom(1024)
+                rescode, filename_length = decode_first_byte(data[0:1])
             if(rescode == 0):
                 print(f" File was downloaded succesfully" )
             else:
@@ -136,6 +162,7 @@ def command_byte(opcode, filename=None):
     return msb | filename_length
 
 def ftp_transfer_client(server_ip, server_port):
+        global tcp
         script_directory = os.path.dirname(os.path.realpath(__file__))
         os.chdir(script_directory)
         while True:
@@ -143,11 +170,13 @@ def ftp_transfer_client(server_ip, server_port):
             if connection =='TCP':     
                 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 client_socket.connect((server_ip, server_port))
+                tcp = True
                 print("TCP connection established")
                 print(f"Connected to FTP Server at {server_ip}:{server_port}")
                 break
             elif connection =='UDP':
                 client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                tcp = False
                 print(f"sending requests via UDP to {server_ip}:{server_port} ")
                 break
             else:
@@ -158,11 +187,13 @@ def ftp_transfer_client(server_ip, server_port):
             command = input("myftp>").split()
             
             if connection == 'TCP':
+                
+                
                 # Send command to the server
                 # client_socket.send(' '.join(command).encode())
                 if(command[0].lower() == 'put'):
                     print('transferring file')
-                    put_func(command[1], client_socket)
+                    put_func(command[1], client_socket, server_ip,server_port)
                 elif command[0].lower() == 'get':
                     get_func(command[1].lower(),client_socket)
                     print('waiting for server response')
@@ -196,9 +227,17 @@ def ftp_transfer_client(server_ip, server_port):
                 else:
                     continue
                 
-            elif connection == 'UDP':          
+            elif connection == 'UDP':     
+
                 # Send command to the server
+                
+
                 client_socket.sendto(' '.join(command).encode(),(server_ip,server_port))
+                
+                if(command[0].lower() == 'put'):
+                    print('transferring file UDP')
+                    put_func(command[1], client_socket, server_ip,server_port)
+
 
 if __name__ == '__main__':
     port = input("enter the port you want to connect to ? ")

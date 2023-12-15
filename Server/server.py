@@ -6,6 +6,7 @@ rescode_summary = 2
 rescode_change = 0
 rescode_get = 1
 rescode_put =0 
+rescode_unsuccesful_change = 5 
 res_file_not_found = 3
 res_error_unknown_request= 4
 
@@ -15,6 +16,8 @@ summary_opcode =3
 put_opcode =0
 error_unknown_request= 6
 help_opcode = 4
+
+tcp = True
 
 server_folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -31,16 +34,23 @@ def decode_first_byte(first_byte):  # Add rescode to response message
     return rescode, filename_length
 
 def receive_file(connection_socket, filename_length):
-
-   encoded_filename = connection_socket.recv(filename_length)
-   filename = encoded_filename.decode()
+   
+   if(tcp):
+        encoded_filename = connection_socket.recv(filename_length)
+   else:
+        data, client_address = connection_socket.recvfrom(filename_length)
+        filename = data.decode()
+ 
    file_path = os.path.join(server_folder, filename)
    print(f"Saving file to: {file_path}")
    
    with open(file_path, 'wb') as file:
          while True:
-            file_data = connection_socket.recv(1024)
-            print(file_data)
+            if(tcp):
+                file_data = connection_socket.recv(1024)
+            else:
+                file_data, _ = connection_socket.recvfrom(1024)
+            
             if len(file_data) == 0:
                 # No more data to read, break out of the loop
                 break
@@ -53,7 +63,10 @@ def receive_file(connection_socket, filename_length):
                 file.write(file_data)
    msb = rescode_put << 5 
    response_msg = msb | 0
-   connection_socket.send(bytes([response_msg]))
+   if(tcp):
+        connection_socket.send(bytes([response_msg]))
+   else: 
+       connection_socket.sendto(bytes([response_msg]),client_address)
 
 def send_file(connection_socket,decoded_filename):
     file_path = os.path.join(server_folder,decoded_filename)
@@ -158,15 +171,17 @@ def bye():
     print("Client closed the connection.")
 
 def fileTransferProtocol(port):
+    global tcp
     while True:
         connection = input("Choose type of communication: TCP or UDP? ")
 
         if connection == 'TCP':
+            tcp = True
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             serverSocket.bind(('127.0.0.1', port))
             serverSocket.listen(1)
             #accept first connection
-            connectionSocket,addr = serverSocket.accept()
+            connectionSocket,addr = serverSocket.accept()           
             #variable to know if there is a client currently connected
             connected = True
             print("TCP server launched!")
@@ -220,20 +235,32 @@ def fileTransferProtocol(port):
 
 
         elif connection == 'UDP':     
+            tcp = False
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             serverSocket.bind(('127.0.0.1', port))
             print("UDP server launched!")
             while True:
-                #no need to accept with udp we just receive
-                data, addr = serverSocket.recvfrom(1024)
-                data_new = data.decode()
+                data, client_address = serverSocket.recvfrom(1024)  # Adjust buffer size as needed
+                first_byte = data[0:1]
+                rescode, filename_length = decode_first_byte(first_byte)
 
-                # Split the HTTP request sent into words
-                group_requests = data_new.split(" ")
-                print(group_requests)
+                
 
-        else:
-            continue
+                if rescode == put_opcode:
+                    receive_file(serverSocket, filename_length)
+                    print(f" UDP File received successfully.")
+
+                # #no need to accept with udp we just receive
+                # data, addr = serverSocket.recvfrom(1024)
+                # data_new = data.decode()
+
+                # # Split the HTTP request sent into words
+                # group_requests = data_new.split(" ")
+                # print(group_requests)
+                
+
+                else :
+                    continue
     
 if __name__ == '__main__':
     print(server_folder)
