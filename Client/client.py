@@ -145,17 +145,31 @@ def put_func(filename, client_socket, server_ip,server_port):
                 print(f"Error downloading the file")    
 
 
-def change_func(connectionSocket, oldFileName, newFileName):
+def change_func(connectionSocket, oldFileName, newFileName, server_ip, server_port):
     firstByte = command_byte(change_opcode, oldFileName)
-    connectionSocket.send(bytes([firstByte]))
-    connectionSocket.send(oldFileName.encode(typefile))
+    server_address = (server_ip, server_port)
+    if(tcp):
+        connectionSocket.send(bytes([firstByte]))
+        connectionSocket.send(oldFileName.encode(typefile))
+    else:
+        connectionSocket.sendto(bytes([firstByte]), server_address)
+        connectionSocket.sendto(oldFileName.encode(typefile), server_address)
     #to send length of the newFileName
     newFileName_length = bytes([len(newFileName)])
-    connectionSocket.send(newFileName_length)
-    #send encoded newFileName
-    connectionSocket.send(newFileName.encode(typefile))
+    if(tcp):
+        connectionSocket.send(newFileName_length)
+        #send encoded newFileName
+        connectionSocket.send(newFileName.encode(typefile))
     #receive response from server
-    rescode, filename_length = decode_first_byte(connectionSocket.recv(1))
+    else:
+         connectionSocket.sendto(newFileName_length, server_address)
+        #send encoded newFileName
+         connectionSocket.sendto(newFileName.encode(typefile), server_address)
+    if(tcp):
+        rescode, filename_length = decode_first_byte(connectionSocket.recv(1))
+    else:
+        firstByte1,_ = connectionSocket.recvfrom(1)
+        rescode, filename_length = decode_first_byte(firstByte1)
     if rescode == 0:
         print(f"{oldFileName} has been changed into {newFileName}. ")
     elif rescode == 3:
@@ -264,7 +278,7 @@ def ftp_transfer_client(server_ip, server_port):
                      if(rescode == 4): 
                          print(f"command not found")
                     
-                     
+                
 
 
                 else:
@@ -302,9 +316,10 @@ def ftp_transfer_client(server_ip, server_port):
                 elif(command[0].lower() == 'help'):
                      help_func(client_socket, server_ip, server_port)
                 elif(command[0].lower() == 'change'):
-                    change_func(client_socket,command[1], command[2])
+                    change_func(client_socket,command[1], command[2], server_ip, server_port)
                 elif command[0].lower() == 'summary':
                      summary(command[1].lower(), client_socket, server_ip, server_port)
+
 
 
 

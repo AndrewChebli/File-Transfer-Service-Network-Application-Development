@@ -94,22 +94,38 @@ def send_file(connection_socket,decoded_filename,client_address="none"):
         else:
             connection_socket.sendto(eof_signal, client_address)
 
-def change_func(connection_socket,oldFileName_length):
+def change_func(connection_socket,oldFileName_length, client_address):
     #for old name
-    encoded_oldFileName = connection_socket.recv(oldFileName_length)
+    if(tcp):
+        encoded_oldFileName = connection_socket.recv(oldFileName_length)
+    else:
+        encoded_oldFileName,_ = connection_socket.recvfrom(oldFileName_length)
+    
     decoded_oldFileName = encoded_oldFileName.decode()
 
     #for new name
-    newFileByte = connection_socket.recv(1)
+    if(tcp):
+        newFileByte = connection_socket.recv(1)
+    else:
+        newFileByte,_ = connection_socket.recvfrom(1)
+
     new_fileName_length = int.from_bytes(newFileByte, byteorder='big') 
-    newFileName = (connection_socket.recv(new_fileName_length)).decode()
+
+    if(tcp):
+        newFileName = (connection_socket.recv(new_fileName_length)).decode()
+    else:
+        newFile, _ = connection_socket.recvfrom(new_fileName_length)
+        newFileName = (newFile).decode()
 
     # check if file exists
     if not os.path.isfile(os.path.join(server_folder, decoded_oldFileName)):
         print(f"File '{decoded_oldFileName}' not found.")
         msb = res_file_not_found << 5 
         response_msg = msb | 0
-        connection_socket.send(bytes([response_msg]))    
+        if tcp:
+            connection_socket.send(bytes([response_msg]))  
+        else: 
+             connection_socket.sendto(bytes([response_msg]), client_address)   
         return
 
     #change name
@@ -118,12 +134,18 @@ def change_func(connection_socket,oldFileName_length):
         print(f"Change request was a failure! ")
         msb = 5 << 5 
         response_msg = msb | 0
-        connection_socket.send(bytes([response_msg]))
+        if(tcp):
+            connection_socket.send(bytes([response_msg]))
+        else:
+            connection_socket.sendto(bytes([response_msg]), client_address)
         return 
     print(f"Change request was a success! ")
     msb = rescode_change << 5 
     response_msg = msb | 0
-    connection_socket.send(bytes([response_msg]))
+    if(tcp):
+        connection_socket.send(bytes([response_msg]))
+    else:
+        connection_socket.sendto(bytes([response_msg]), client_address)
     
     
 def calculate_summary(filename):
@@ -300,7 +322,7 @@ def fileTransferProtocol(port):
                 elif rescode == help_opcode:
                     help_func(serverSocket,"help.txt",client_address)
                 elif rescode == 2:
-                    change_func(serverSocket,filename_length)
+                    change_func(serverSocket,filename_length, client_address)
                 elif rescode == summary_opcode:
                     encoded_filename, client_address = serverSocket.recvfrom(filename_length)
                     decoded_filename = encoded_filename.decode()
