@@ -11,16 +11,32 @@ typefile = "utf-8"
 client_folder = os.path.dirname(os.path.realpath(__file__))
 tcp = True
 
-def help_func(connection_socket):
-    firstByte = command_byte(help_opcode)
-    connection_socket.send(bytes([firstByte]))
-    rescode, filename_length = decode_first_byte(connection_socket.recv(1))
-    print(f"rescode {rescode}")
-    if rescode == 6:
-        print(f"commands are: {(connection_socket.recv(1024)).decode()}")
+def help_func(connection_socket, server_ip=None, server_port=None):
+    if tcp:
+        firstByte = command_byte(help_opcode)
+        connection_socket.send(bytes([firstByte]))
+        rescode, filename_length = decode_first_byte(connection_socket.recv(1))
+        print(f"rescode {rescode}")
+        if rescode == 6:
+            print(f"commands are: {(connection_socket.recv(1024)).decode()}")
+    else:
+        firstByte = command_byte(help_opcode)
+        connection_socket.sendto(bytes([firstByte]), (server_ip, server_port))
+        #get first byte
+        data, _ = connection_socket.recvfrom(1)
+        #get the rescode and filename_length
+        rescode, filename_length = decode_first_byte(data[0:1])
+        if rescode == 6:
+            filedata, address = connection_socket.recvfrom(1024)
+            print(f"commands are: {filedata.decode()}") 
+        elif rescode == 4:
+            print("Error in help request.")
+
+                
+            
 
 def decode_first_byte(first_byte):  # Add rescode to response message
-    new = int.from_bytes(first_byte, byteorder='big') 
+    new = int.from_bytes(first_byte, byteorder='big')
     rescode = new >>5
     filename_length = new & 0x1F
     return rescode, filename_length
@@ -258,6 +274,7 @@ def ftp_transfer_client(server_ip, server_port):
                     put_func(command[1], client_socket, server_ip,server_port)
                 elif(command[0].lower() == 'get'):
                     get_func(command[1].lower(),client_socket, server_ip,server_port )
+
                     rescode, filename_length = decode_first_byte(client_socket.recv(1))
                     if rescode == 1:
                         print("get request was successful")
@@ -270,6 +287,18 @@ def ftp_transfer_client(server_ip, server_port):
                     # rescode, filename_length = decode_first_byte(data[0:1])
                     # print(f'get request was successful {rescode} and {filename_length}')
                     # receive_file(client_socket,filename_length)
+                elif(command[0].lower() == 'bye'):
+                    print('client terminated session')
+                    client_socket.close()
+                    break
+                elif(command[0].lower() == 'help'):
+                     help_func(client_socket, server_ip, server_port)
+                elif(command[0].lower() == 'change'):
+                    change_func(client_socket,command[1], command[2])
+                elif command[0].lower() == 'summary':
+                     summary(command[1].lower(), client_socket)
+
+
 
 
 if __name__ == '__main__':

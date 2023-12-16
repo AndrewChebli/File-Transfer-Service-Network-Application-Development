@@ -155,25 +155,40 @@ def summary_func(connection_socket, filename):
     else:
         connection_socket.send("Error in processing file.".encode())
 
-def help_func(connection_socket,filename):
-    msb = good_request_help << 5 
-    fileSize = os.path.getsize(f"{server_folder}/{filename}")
-    response_msg = msb | fileSize
-    connection_socket.send(bytes([response_msg]))
-    print(response_msg)
-    
-    with open(filename,"rb") as file:
-        filedata = file.read(1024)
-        connection_socket.send(filedata)
-        while filedata:
+def help_func(connection_socket,filename,client_address="none"):
+    if(tcp):
+        msb = good_request_help << 5 
+        fileSize = os.path.getsize(f"{server_folder}/{filename}")
+        response_msg = msb | fileSize
+        connection_socket.send(bytes([response_msg]))
+        print(response_msg)
+        
+        with open(filename,"rb") as file:
             filedata = file.read(1024)
-            if not filedata:
-                break  # Exit the loop when no more data to send
             connection_socket.send(filedata)
-            print(filedata)
-            # Send an "EOF" signal to indicate the end of the file
-            eof_signal = "EOF".encode()
-            connection_socket.send(eof_signal)
+            while filedata:
+                filedata = file.read(1024)
+                if not filedata:
+                    break  # Exit the loop when no more data to send
+                connection_socket.send(filedata)
+                print(filedata)
+                # Send an "EOF" signal to indicate the end of the file
+                eof_signal = "EOF".encode()
+                connection_socket.send(eof_signal)
+    else:
+        msb = good_request_help << 5 
+        fileSize = os.path.getsize(f"{server_folder}/{filename}")
+        response_msg = msb | fileSize
+        connection_socket.sendto(bytes([response_msg]),client_address)
+        print(response_msg)
+        
+        with open(filename,"rb") as file:
+            filedata = file.read(1024)
+            connection_socket.sendto(filedata,client_address)
+            while filedata:
+                filedata = file.read(1024)
+                if not filedata:
+                    break
 
 
 def bye():
@@ -262,6 +277,7 @@ def fileTransferProtocol(port):
                 elif rescode == get_opcode:
                     encoded_filename, client_address = serverSocket.recvfrom(filename_length)
                     decoded_filename = encoded_filename.decode()
+
                     if os.path.exists(f"{server_folder}/{decoded_filename}"):
                         response_msg = response_byte(rescode_get,decoded_filename)
                         
@@ -275,6 +291,20 @@ def fileTransferProtocol(port):
                         response_msg = msb | 0
                         connectionSocket.sendto(bytes([response_msg]), client_address)
                 
+
+                elif rescode == help_opcode:
+                    help_func(serverSocket,"help.txt",client_address)
+                elif rescode == 2:
+                    change_func(serverSocket,filename_length)
+                elif rescode == summary_opcode:
+                    encoded_filename, client_address = serverSocket.recvfrom(filename_length)
+                    decoded_filename = encoded_filename.decode()
+                    summary_func(serverSocket, decoded_filename)
+                elif rescode == error_unknown_request:
+                    msb = res_error_unknown_request << 5
+                    response_msg = msb | 0
+                    serverSocket.sendto(bytes([response_msg]),client_address)    
+
                 # #no need to accept with udp we just receive
                 # data, addr = serverSocket.recvfrom(1024)
                 # data_new = data.decode()
