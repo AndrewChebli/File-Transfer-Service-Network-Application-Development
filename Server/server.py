@@ -138,7 +138,7 @@ def calculate_summary(filename):
         print(f"Error calculating summary: {e}")
         return None, None, None
 
-def summary_func(connection_socket, filename):
+def summary_func(connection_socket, filename,client_address="none"):
     max_val, min_val, avg_val = calculate_summary(filename)
     if max_val is not None:
         summary_data = f"Max: {max_val}\nMin: {min_val}\nAverage: {avg_val}\n"
@@ -148,9 +148,15 @@ def summary_func(connection_socket, filename):
         basename = os.path.basename(summary_filename) 
         res_message = response_byte(rescode_summary, basename)
 
-        connection_socket.send(bytes([res_message]))
-        connection_socket.send(basename.encode())
-        send_file(connection_socket, basename)
+        if tcp:
+            
+            connection_socket.send(bytes([res_message]))
+            connection_socket.send(basename.encode())
+            send_file(connection_socket, basename)
+        else:
+            connection_socket.sendto(bytes([res_message]),client_address)
+            connection_socket.sendto(basename.encode(),client_address)
+            send_file(connection_socket, basename, client_address)
         os.remove(summary_filename)
     else:
         connection_socket.send("Error in processing file.".encode())
@@ -265,7 +271,6 @@ def fileTransferProtocol(port):
             while True:
                 data, client_address = serverSocket.recvfrom(1024)  # Adjust buffer size as needed
                 first_byte = data[0:1]
-                print(f"this is the firsstttt {first_byte}")
                 rescode, filename_length = decode_first_byte(first_byte)
                 
 
@@ -299,7 +304,7 @@ def fileTransferProtocol(port):
                 elif rescode == summary_opcode:
                     encoded_filename, client_address = serverSocket.recvfrom(filename_length)
                     decoded_filename = encoded_filename.decode()
-                    summary_func(serverSocket, decoded_filename)
+                    summary_func(serverSocket, decoded_filename, client_address)
                 elif rescode == error_unknown_request:
                     msb = res_error_unknown_request << 5
                     response_msg = msb | 0

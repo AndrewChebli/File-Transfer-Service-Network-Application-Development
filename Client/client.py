@@ -166,15 +166,23 @@ def change_func(connectionSocket, oldFileName, newFileName):
 
 
 
-def summary(filename,client_socket):
-     firstByte = command_byte(summary_opcode, filename)
-     client_socket.send(bytes([firstByte]))
-     client_socket.send(filename.encode(typefile))
-
-     print('waiting for server response')
-
-     rescode, filename_length = decode_first_byte(client_socket.recv(1))
+def summary(filename,client_socket, server_ip=None, server_port=None):
      
+     firstByte = command_byte(summary_opcode, filename)
+     if tcp:
+        client_socket.send(bytes([firstByte]))
+        client_socket.send(filename.encode(typefile))
+
+        print('waiting for server response')
+
+        rescode, filename_length = decode_first_byte(client_socket.recv(1))
+     else:
+        server_address = (server_ip, server_port)
+        client_socket.sendto(bytes([firstByte]), server_address)
+        client_socket.sendto(filename.encode(typefile), server_address)
+        print('waiting for server response')
+        data, _ = client_socket.recvfrom(1024)
+        rescode, filename_length = decode_first_byte(data[0:1])   
      if rescode == 2:
         print(f"Summary request for {filename} was successful.")
         # Assuming the server sends back the name of the summary file
@@ -296,7 +304,7 @@ def ftp_transfer_client(server_ip, server_port):
                 elif(command[0].lower() == 'change'):
                     change_func(client_socket,command[1], command[2])
                 elif command[0].lower() == 'summary':
-                     summary(command[1].lower(), client_socket)
+                     summary(command[1].lower(), client_socket, server_ip, server_port)
 
 
 
