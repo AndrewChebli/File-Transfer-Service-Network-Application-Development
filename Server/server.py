@@ -68,22 +68,32 @@ def receive_file(connection_socket, filename_length):
    else: 
        connection_socket.sendto(bytes([response_msg]),client_address)
 
-def send_file(connection_socket,decoded_filename):
+def send_file(connection_socket,decoded_filename,client_address="none"):
     file_path = os.path.join(server_folder,decoded_filename)
     with open(file_path,'rb') as file:
         filedata = file.read(1024)
-        connection_socket.send(filedata)
+        if(tcp):
+            connection_socket.send(filedata)
+        else:
+           
+            connection_socket.sendto(filedata, client_address)
 
         # Continue sending one byte at a time until the end of the file
         while filedata:
             filedata = file.read(1024)
             if not filedata:
                 break  # Exit the loop when no more data to send
-            connection_socket.send(filedata)
+            if(tcp):
+                connection_socket.send(filedata)
+            else:
+                connection_socket.sendto(filedata, client_address)
             print(filedata)
         # Send an "EOF" signal to indicate the end of the file
         eof_signal = "EOF".encode()
-        connection_socket.send(eof_signal)
+        if(tcp) :
+            connection_socket.send(eof_signal)
+        else:
+            connection_socket.sendto(eof_signal, client_address)
 
 def change_func(connection_socket,oldFileName_length):
     #for old name
@@ -174,7 +184,6 @@ def fileTransferProtocol(port):
     global tcp
     while True:
         connection = input("Choose type of communication: TCP or UDP? ")
-
         if connection == 'TCP':
             tcp = True
             serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -243,13 +252,18 @@ def fileTransferProtocol(port):
                 data, client_address = serverSocket.recvfrom(1024)  # Adjust buffer size as needed
                 first_byte = data[0:1]
                 rescode, filename_length = decode_first_byte(first_byte)
+                
 
                 
 
                 if rescode == put_opcode:
                     receive_file(serverSocket, filename_length)
                     print(f" UDP File received successfully.")
-
+                elif rescode == get_opcode:
+                    encoded_filename, client_address = serverSocket.recvfrom(filename_length)
+                    decoded_filename = encoded_filename.decode()
+                    send_file(serverSocket, decoded_filename, client_address)
+                
                 # #no need to accept with udp we just receive
                 # data, addr = serverSocket.recvfrom(1024)
                 # data_new = data.decode()

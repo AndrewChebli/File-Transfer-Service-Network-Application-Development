@@ -26,29 +26,47 @@ def decode_first_byte(first_byte):  # Add rescode to response message
     return rescode, filename_length
 
 def receive_file(connection_socket, filename_length):
-
-   encoded_filename = connection_socket.recv(filename_length)
+   if tcp:
+        encoded_filename = connection_socket.recv(filename_length)
+   else:
+       encoded_filename, client_address = connection_socket.recvfrom(filename_length)
+    
    filename = encoded_filename.decode()
+   print(f"file name is {filename}")
    file_path = os.path.join(client_folder, filename)
    print(f"Saving file to: {file_path}")  
    with open(file_path, 'wb') as file:
          while True:
-            file_data = connection_socket.recv(1024)
+            if tcp:
+                file_data = connection_socket.recv(1024)
+            else:
+                file_data = connection_socket.recvfrom(1024)
+            
             if "EOF".encode() in file_data:
                 # If EOF is found, write data up to EOF and then break
                 eof_index = file_data.index("EOF".encode())
                 file.write(file_data[:eof_index])  # Write data before EOF
                 break  # Stop reading after EOF
-            else:
+            else: 
                 file.write(file_data)
 
-def get_func(filename, client_socket):
+def get_func(filename, client_socket, server_ip, server_port):
+        
         if len(filename)>31:
             raise("filename length should be 31 or less")
         
         firstByte = command_byte(get_opcode, filename)
-        client_socket.send(bytes([firstByte]))
-        client_socket.send(filename.encode(typefile))
+        server_address = (server_ip, server_port)
+        if(tcp):
+            
+            client_socket.send(bytes([firstByte]))
+            client_socket.send(filename.encode(typefile))
+        else:
+            client_socket.sendto(bytes([firstByte]), server_address)
+            client_socket.sendto(filename.encode(typefile), server_address)
+
+            
+
 
 def put_func(filename, client_socket, server_ip,server_port):
             
@@ -195,7 +213,7 @@ def ftp_transfer_client(server_ip, server_port):
                     print('transferring file')
                     put_func(command[1], client_socket, server_ip,server_port)
                 elif command[0].lower() == 'get':
-                    get_func(command[1].lower(),client_socket)
+                    get_func(command[1].lower(),client_socket, server_ip = None,server_port = None)
                     print('waiting for server response')
                     rescode, filename_length = decode_first_byte(client_socket.recv(1))
                     print(f"answer is {rescode}, {filename_length}")
@@ -220,7 +238,7 @@ def ftp_transfer_client(server_ip, server_port):
                      rescode, filename_length = decode_first_byte(client_socket.recv(1))
                      if(rescode == 4): 
                          print(f"command not found")
-                     
+                    
                      
 
 
@@ -232,11 +250,18 @@ def ftp_transfer_client(server_ip, server_port):
                 # Send command to the server
                 
 
-                client_socket.sendto(' '.join(command).encode(),(server_ip,server_port))
+                # client_socket.sendto(' '.join(command).encode(),(server_ip,server_port))
                 
                 if(command[0].lower() == 'put'):
                     print('transferring file UDP')
                     put_func(command[1], client_socket, server_ip,server_port)
+                elif(command[0].lower() == 'get'):
+                    get_func(command[1].lower(),client_socket, server_ip,server_port )
+                    print('waiting for server response')
+                    data, _ = client_socket.recvfrom(1024)
+                    rescode, filename_length = decode_first_byte(data[0:1])
+                    print("get request was successful")
+                    receive_file(client_socket,filename_length)
 
 
 if __name__ == '__main__':
