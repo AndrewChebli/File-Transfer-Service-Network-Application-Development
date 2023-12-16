@@ -40,7 +40,8 @@ def receive_file(connection_socket, filename_length):
             if tcp:
                 file_data = connection_socket.recv(1024)
             else:
-                file_data = connection_socket.recvfrom(1024)
+                file_data, _ = connection_socket.recvfrom(1024)
+                
             
             if "EOF".encode() in file_data:
                 # If EOF is found, write data up to EOF and then break
@@ -257,11 +258,18 @@ def ftp_transfer_client(server_ip, server_port):
                     put_func(command[1], client_socket, server_ip,server_port)
                 elif(command[0].lower() == 'get'):
                     get_func(command[1].lower(),client_socket, server_ip,server_port )
-                    print('waiting for server response')
-                    data, _ = client_socket.recvfrom(1024)
-                    rescode, filename_length = decode_first_byte(data[0:1])
-                    print("get request was successful")
-                    receive_file(client_socket,filename_length)
+                    rescode, filename_length = decode_first_byte(client_socket.recv(1))
+                    if rescode == 1:
+                        print("get request was successful")
+                        receive_file(client_socket,filename_length)
+                    elif rescode == 3:
+                        print(f"File '{command[1]}' not found.")
+                    # print('waiting for server response')
+                    # data, _ = client_socket.recvfrom(1024)
+                    # print(f"{data}")
+                    # rescode, filename_length = decode_first_byte(data[0:1])
+                    # print(f'get request was successful {rescode} and {filename_length}')
+                    # receive_file(client_socket,filename_length)
 
 
 if __name__ == '__main__':

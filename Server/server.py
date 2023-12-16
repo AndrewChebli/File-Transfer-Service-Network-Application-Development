@@ -38,8 +38,9 @@ def receive_file(connection_socket, filename_length):
    if(tcp):
         encoded_filename = connection_socket.recv(filename_length)
    else:
-        data, client_address = connection_socket.recvfrom(filename_length)
-        filename = data.decode()
+        encoded_filename, client_address = connection_socket.recvfrom(filename_length)
+   
+   filename = encoded_filename.decode()
  
    file_path = os.path.join(server_folder, filename)
    print(f"Saving file to: {file_path}")
@@ -75,9 +76,7 @@ def send_file(connection_socket,decoded_filename,client_address="none"):
         if(tcp):
             connection_socket.send(filedata)
         else:
-           
-            connection_socket.sendto(filedata, client_address)
-
+            connection_socket.sendto(filedata,client_address)
         # Continue sending one byte at a time until the end of the file
         while filedata:
             filedata = file.read(1024)
@@ -251,6 +250,7 @@ def fileTransferProtocol(port):
             while True:
                 data, client_address = serverSocket.recvfrom(1024)  # Adjust buffer size as needed
                 first_byte = data[0:1]
+                print(f"this is the firsstttt {first_byte}")
                 rescode, filename_length = decode_first_byte(first_byte)
                 
 
@@ -262,7 +262,18 @@ def fileTransferProtocol(port):
                 elif rescode == get_opcode:
                     encoded_filename, client_address = serverSocket.recvfrom(filename_length)
                     decoded_filename = encoded_filename.decode()
-                    send_file(serverSocket, decoded_filename, client_address)
+                    if os.path.exists(f"{server_folder}/{decoded_filename}"):
+                        response_msg = response_byte(rescode_get,decoded_filename)
+                        
+                        serverSocket.sendto(bytes([response_msg]), client_address)
+                        serverSocket.sendto(decoded_filename.encode("utf-8"),client_address)
+                        send_file(serverSocket, decoded_filename, client_address)
+                        print("File sent successfully")
+                    else:
+                        print(f"File '{decoded_filename}' not found.")
+                        msb = res_file_not_found << 5 
+                        response_msg = msb | 0
+                        connectionSocket.sendto(bytes([response_msg]), client_address)
                 
                 # #no need to accept with udp we just receive
                 # data, addr = serverSocket.recvfrom(1024)
